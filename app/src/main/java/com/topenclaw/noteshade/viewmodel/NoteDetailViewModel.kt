@@ -57,8 +57,19 @@ class NoteDetailViewModel(
 
     fun updateTitle(value: String) { _state.value = _state.value.copy(title = value, saved = false) }
     fun updateBody(value: String) { _state.value = _state.value.copy(body = value, saved = false) }
-    fun togglePinned() { _state.value = _state.value.copy(isPinned = !_state.value.isPinned, saved = false) }
+    fun togglePinned() {
+        val willBePinned = !_state.value.isPinned
+        _state.value = _state.value.copy(
+            isPinned = willBePinned,
+            showInNotification = if (willBePinned) true else _state.value.showInNotification,
+            saved = false
+        )
+    }
     fun toggleNotification() { _state.value = _state.value.copy(showInNotification = !_state.value.showInNotification, saved = false) }
+    fun archive(onDone: () -> Unit = {}) = viewModelScope.launch {
+        _state.value = _state.value.copy(isArchived = true, showInNotification = false, saved = false)
+        save { onDone() }
+    }
     fun clearError() { _state.value = _state.value.copy(error = null) }
 
     fun save(onDone: (Long) -> Unit = {}) = viewModelScope.launch {
@@ -78,7 +89,12 @@ class NoteDetailViewModel(
                 )
             )
             _state.value = _state.value.copy(noteId = id, saved = true)
-            NotificationHelper.syncPinnedNotifications(context, repo.getNotificationNotes(), settingsRepository.settings.first().notificationsEnabled)
+            NotificationHelper.syncPinnedNotifications(
+                context,
+                repo.getNotificationNotes(),
+                settingsRepository.settings.first().notificationsEnabled,
+                repo.getAllNoteIds()
+            )
             onDone(id)
         } catch (t: Throwable) {
             _state.value = _state.value.copy(error = t.message ?: "Failed to save note")

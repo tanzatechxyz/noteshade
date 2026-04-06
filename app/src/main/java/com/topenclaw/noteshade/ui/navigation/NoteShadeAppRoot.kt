@@ -71,6 +71,7 @@ fun NoteShadeAppRoot(
                 onTogglePinned = detailVm::togglePinned,
                 onToggleNotification = detailVm::toggleNotification,
                 onSave = { detailVm.save { nav.popBackStack() } },
+                onArchive = { detailVm.archive { nav.popBackStack() } },
                 onClearError = detailVm::clearError
             )
         }

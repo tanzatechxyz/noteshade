@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Save
@@ -43,6 +44,7 @@ fun NoteEditorScreen(
     onTogglePinned: () -> Unit,
     onToggleNotification: () -> Unit,
     onSave: () -> Unit,
+    onArchive: () -> Unit,
     onClearError: () -> Unit
 ) {
     val snackbar = remember { SnackbarHostState() }
@@ -64,6 +66,9 @@ fun NoteEditorScreen(
             TopAppBar(title = { Text(if (noteId == 0L) "New note" else "Edit note") }, navigationIcon = {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = null) }
             }, actions = {
+                if (noteId > 0L) {
+                    IconButton(onClick = onArchive) { Icon(Icons.Default.Archive, contentDescription = null) }
+                }
                 IconButton(onClick = onSave) { Icon(Icons.Default.Save, contentDescription = null) }
             })
         },

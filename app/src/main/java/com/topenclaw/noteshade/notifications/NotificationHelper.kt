@@ -18,6 +18,7 @@ import com.topenclaw.noteshade.receivers.NotificationActionReceiver
 
 object NotificationHelper {
     private const val CHANNEL_ID = "pinned_notes"
+    private const val NOTIFICATION_ID_OFFSET = 1000
 
     fun ensureChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -27,13 +28,13 @@ object NotificationHelper {
         manager.createNotificationChannel(channel)
     }
 
-    fun syncPinnedNotifications(context: Context, notes: List<Note>, enabled: Boolean) {
+    fun syncPinnedNotifications(context: Context, notes: List<Note>, enabled: Boolean, knownNoteIds: List<Long> = notes.map { it.id }) {
         ensureChannels(context)
         val manager = NotificationManagerCompat.from(context)
-        notes.forEach { manager.cancel(it.notificationId()) }
+        knownNoteIds.forEach { manager.cancel(notificationId(it)) }
         if (!enabled || !canPost(context)) return
         notes.filter { it.showInNotification && !it.isArchived }
-            .forEach { note -> manager.notify(note.notificationId(), buildNoteNotification(context, note)) }
+            .forEach { note -> manager.notify(notificationId(note.id), buildNoteNotification(context, note)) }
     }
 
     fun cancel(context: Context, noteId: Long) {
@@ -49,9 +50,9 @@ object NotificationHelper {
         .setOnlyAlertOnce(true)
         .setPriority(NotificationCompat.PRIORITY_LOW)
         .setContentIntent(openIntent(context, note.id))
-        .addAction(0, "Open", openIntent(context, note.id))
+        .setDeleteIntent(broadcastIntent(context, note.id, NotificationActionReceiver.ACTION_RESTORE_NOTIFICATION))
+        .addAction(0, "Edit", openIntent(context, note.id))
         .addAction(0, "Archive", broadcastIntent(context, note.id, NotificationActionReceiver.ACTION_ARCHIVE))
-        .addAction(0, "Hide", broadcastIntent(context, note.id, NotificationActionReceiver.ACTION_UNPIN_NOTIFICATION))
         .build()
 
     private fun openIntent(context: Context, noteId: Long): PendingIntent {
@@ -73,5 +74,5 @@ object NotificationHelper {
     private fun canPost(context: Context): Boolean = Build.VERSION.SDK_INT < 33 ||
         ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
-    private fun Note.notificationId(): Int = id.toInt() + 1000
+    fun notificationId(noteId: Long): Int = noteId.toInt() + NOTIFICATION_ID_OFFSET
 }

@@ -45,7 +45,13 @@ class NotesViewModel(
     fun updateSort(sortOrder: SortOrder) { selectedSort.value = sortOrder }
     fun dismissFirstRun() = viewModelScope.launch { settingsRepository.markFirstRunDone() }
 
-    fun togglePinned(note: Note) = mutate(note.copy(isPinned = !note.isPinned, updatedAt = System.currentTimeMillis()))
+    fun togglePinned(note: Note) = mutate(
+        note.copy(
+            isPinned = !note.isPinned,
+            showInNotification = if (!note.isPinned) true else note.showInNotification,
+            updatedAt = System.currentTimeMillis()
+        )
+    )
     fun toggleNotification(note: Note) = mutate(note.copy(showInNotification = !note.showInNotification, updatedAt = System.currentTimeMillis()))
     fun archive(note: Note) = mutate(note.copy(isArchived = true, showInNotification = false, updatedAt = System.currentTimeMillis()))
     fun unarchive(note: Note) = mutate(note.copy(isArchived = false, updatedAt = System.currentTimeMillis()))
@@ -57,13 +63,21 @@ class NotesViewModel(
     }
 
     private suspend fun syncNotifications() {
-        NotificationHelper.syncPinnedNotifications(context, repo.getNotificationNotes(), state.value.settings.notificationsEnabled)
+        NotificationHelper.syncPinnedNotifications(
+            context,
+            repo.getNotificationNotes(),
+            state.value.settings.notificationsEnabled,
+            repo.getAllNoteIds()
+        )
     }
 
-    private fun sortNotes(notes: List<Note>, sort: SortOrder): List<Note> = when (sort) {
-        SortOrder.PINNED -> notes.sortedWith(compareByDescending<Note> { it.isPinned }.thenByDescending { it.updatedAt })
-        SortOrder.NEWEST -> notes.sortedByDescending { it.createdAt }
-        SortOrder.OLDEST -> notes.sortedBy { it.createdAt }
-        SortOrder.RECENTLY_UPDATED -> notes.sortedByDescending { it.updatedAt }
+    private fun sortNotes(notes: List<Note>, sort: SortOrder): List<Note> {
+        val secondaryComparator = when (sort) {
+            SortOrder.PINNED -> compareByDescending<Note> { it.updatedAt }
+            SortOrder.NEWEST -> compareByDescending<Note> { it.createdAt }
+            SortOrder.OLDEST -> compareBy<Note> { it.createdAt }
+            SortOrder.RECENTLY_UPDATED -> compareByDescending<Note> { it.updatedAt }
+        }
+        return notes.sortedWith(compareByDescending<Note> { it.isPinned }.then(secondaryComparator))
     }
 }

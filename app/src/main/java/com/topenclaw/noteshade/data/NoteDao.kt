@@ -13,6 +13,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes")
     fun observeAll(): Flow<List<Note>>
 
+    @Query("SELECT id FROM notes")
+    suspend fun getAllIds(): List<Long>
+
     @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): Note?
 

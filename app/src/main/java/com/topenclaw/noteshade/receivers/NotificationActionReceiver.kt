@@ -23,9 +23,14 @@ class NotificationActionReceiver : BroadcastReceiver() {
             val note = repo.getNote(noteId) ?: run { pendingResult.finish(); return@launch }
             when (intent.action) {
                 ACTION_ARCHIVE -> repo.upsert(note.copy(isArchived = true, showInNotification = false, updatedAt = System.currentTimeMillis()))
-                ACTION_UNPIN_NOTIFICATION -> repo.upsert(note.copy(showInNotification = false, updatedAt = System.currentTimeMillis()))
+                ACTION_RESTORE_NOTIFICATION -> Unit
             }
-            NotificationHelper.syncPinnedNotifications(context, repo.getNotificationNotes(), settingsRepo.settings.first().notificationsEnabled)
+            NotificationHelper.syncPinnedNotifications(
+                context,
+                repo.getNotificationNotes(),
+                settingsRepo.settings.first().notificationsEnabled,
+                repo.getAllNoteIds()
+            )
             pendingResult.finish()
         }
     }
@@ -33,6 +38,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
     companion object {
         const val EXTRA_NOTE_ID = "note_id"
         const val ACTION_ARCHIVE = "com.topenclaw.noteshade.ARCHIVE"
-        const val ACTION_UNPIN_NOTIFICATION = "com.topenclaw.noteshade.UNPIN_NOTIFICATION"
+        const val ACTION_RESTORE_NOTIFICATION = "com.topenclaw.noteshade.RESTORE_NOTIFICATION"
     }
 }

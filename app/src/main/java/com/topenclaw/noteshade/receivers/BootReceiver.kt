@@ -18,7 +18,7 @@ class BootReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             val repo = NoteRepository(AppDatabase.get(context).noteDao())
             val settings = SettingsRepository(context).settings.first()
-            NotificationHelper.syncPinnedNotifications(context, repo.getNotificationNotes(), settings.notificationsEnabled)
+            NotificationHelper.syncPinnedNotifications(context, repo.getNotificationNotes(), settings.notificationsEnabled, repo.getAllNoteIds())
             pendingResult.finish()
         }
     }

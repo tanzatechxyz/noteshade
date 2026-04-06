@@ -6,18 +6,19 @@ A polished offline-first Android note-taking app with persistent notification no
 - **Tech stack:** Kotlin, Jetpack Compose, Room, DataStore, Navigation Compose, MVVM
 - **Architecture:** single-module MVVM with repository layer and unidirectional-ish UI state
 - **Storage:** local Room database for notes + DataStore Preferences for settings
-- **Notification plan:** each note can be surfaced as its own low-importance ongoing notification with actions for open, archive, and hide; notifications are restored on boot/app update
+- **Notification plan:** each note can be surfaced as its own low-importance ongoing notification with actions for edit and archive; swipe-dismiss attempts are restored so notification notes remain persistent until archived, and notifications are restored on boot/app update
 
 ## Features
 - Create, edit, delete, search, pin, archive, unarchive notes
 - Title + body notes with auto-save support
+- Pinning highlights notes in the list, moves them to the top immediately, and enables notification surfacing by default
 - Sorting: pinned, newest, oldest, recently updated
 - Archived section in the main screen
 - First-run guidance and empty states
 - Settings for theme, default sort, notifications, auto-save
 - JSON backup export via Android document picker
 - Offline-first local storage
-- Persistent note notifications in the Android shade
+- Persistent note notifications in the Android shade that reopen the linked note when tapped and stay visible unless archived
 
 ## Build
 1. Install Android Studio Hedgehog+ or a recent command-line Android SDK.

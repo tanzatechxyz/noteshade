@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.SmallTopAppBar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -135,11 +136,27 @@ private fun NoteRow(
     archived: Boolean
 ) {
     var showDelete by remember { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth().combinedClickable(onClick = { onOpenNote(note.id) }, onLongClick = { onTogglePinned(note) })) {
+    val cardColors = if (note.isPinned) {
+        CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    } else {
+        CardDefaults.cardColors()
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { onOpenNote(note.id) }, onLongClick = { onTogglePinned(note) }),
+        colors = cardColors
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(Modifier.weight(1f)) {
-                    Text(note.title.ifBlank { "Untitled note" }, fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(note.title.ifBlank { "Untitled note" }, fontWeight = FontWeight.SemiBold)
+                        if (note.isPinned) {
+                            AssistChip(onClick = { onTogglePinned(note) }, label = { Text("Pinned") })
+                        }
+                    }
                     Spacer(Modifier.height(4.dp))
                     Text(note.body.ifBlank { "No content yet" }, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 }
@@ -147,8 +164,20 @@ private fun NoteRow(
             }
             Divider()
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(onClick = { onTogglePinned(note) }) { Icon(Icons.Default.PushPin, contentDescription = null) }
-                IconButton(onClick = { onToggleNotification(note) }) { Icon(Icons.Default.Notifications, contentDescription = null) }
+                IconButton(onClick = { onTogglePinned(note) }) {
+                    Icon(
+                        Icons.Default.PushPin,
+                        contentDescription = null,
+                        tint = if (note.isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = { onToggleNotification(note) }) {
+                    Icon(
+                        Icons.Default.Notifications,
+                        contentDescription = null,
+                        tint = if (note.showInNotification) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 IconButton(onClick = { onArchiveOrUnarchive(note) }) { Icon(Icons.Default.Archive, contentDescription = null) }
                 IconButton(onClick = { showDelete = true }) { Icon(Icons.Default.Delete, contentDescription = null) }
             }
