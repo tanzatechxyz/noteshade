@@ -1,76 +1,57 @@
 package com.topenclaw.noteshade
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.lifecycleScope
-import com.topenclaw.noteshade.navigation.NoteShadeNavHost
-import com.topenclaw.noteshade.ui.NoteShadeTheme
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.topenclaw.noteshade.data.AppDatabase
+import com.topenclaw.noteshade.data.NoteRepository
+import com.topenclaw.noteshade.data.SettingsRepository
+import com.topenclaw.noteshade.ui.navigation.NoteShadeAppRoot
+import com.topenclaw.noteshade.ui.theme.NoteShadeTheme
+import com.topenclaw.noteshade.viewmodel.NoteDetailViewModel
+import com.topenclaw.noteshade.viewmodel.NotesViewModel
+import com.topenclaw.noteshade.viewmodel.SettingsViewModel
+import com.topenclaw.noteshade.viewmodel.ViewModelFactories
 
 class MainActivity : ComponentActivity() {
-    private val pendingOpenNoteId = MutableStateFlow<Long?>(null)
-
-    private val notificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { }
-
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        handleIntent(intent)
-        maybeRequestNotificationPermission()
-
-        val app = application as NoteShadeApp
+        val repo = NoteRepository(AppDatabase.get(this).noteDao())
+        val settingsRepo = SettingsRepository(this)
+        val openNoteId = intent?.getLongExtra("open_note_id", 0L) ?: 0L
         setContent {
-            val settings = app.settingsRepository.settings.collectAsStateWithLifecycle(
-                initialValue = com.topenclaw.noteshade.data.AppSettings()
-            )
-            NoteShadeTheme(
-                darkTheme = settings.value.darkTheme,
-                dynamicColor = settings.value.dynamicColor,
-            ) {
-                NoteShadeNavHost(
-                    noteRepository = app.noteRepository,
-                    settingsRepository = app.settingsRepository,
-                    pendingOpenNoteId = pendingOpenNoteId.asStateFlow(),
-                    onPendingOpenHandled = { pendingOpenNoteId.value = null },
-                    onMarkOnboardingSeen = {
-                        lifecycleScope.launch { app.settingsRepository.setOnboardingSeen(true) }
-                    },
-                )
+            val notesVm: NotesViewModel = viewModel(factory = ViewModelFactories.notes(repo, settingsRepo, applicationContext))
+            val settingsVm: SettingsViewModel = viewModel(factory = ViewModelFactories.settings(settingsRepo))
+            val detailVm: NoteDetailViewModel = viewModel(factory = ViewModelFactories.detail(repo, settingsRepo, applicationContext))
+            val settings by settingsVm.state.collectAsState()
+            val requestPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+            LaunchedEffect(Unit) {
+                if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+
+            NoteShadeTheme(settings.themeMode) {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    NoteShadeAppRoot(notesVm, detailVm, settingsVm, initialOpenNoteId = openNoteId)
+                }
             }
         }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        handleIntent(intent)
-    }
-
-    private fun handleIntent(intent: Intent?) {
-        pendingOpenNoteId.value = intent?.getLongExtra(EXTRA_OPEN_NOTE_ID, -1L)?.takeIf { it > 0L }
-    }
-
-    private fun maybeRequestNotificationPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
-
-    companion object {
-        const val EXTRA_OPEN_NOTE_ID = "open_note_id"
     }
 }

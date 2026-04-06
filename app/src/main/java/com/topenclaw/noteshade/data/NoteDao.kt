@@ -11,20 +11,20 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface NoteDao {
     @Query("SELECT * FROM notes")
-    fun observeAll(): Flow<List<NoteEntity>>
+    fun observeAll(): Flow<List<Note>>
 
     @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
-    fun observeById(id: Long): Flow<NoteEntity?>
+    suspend fun getById(id: Long): Note?
 
-    @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
-    suspend fun getById(id: Long): NoteEntity?
+    @Query("SELECT * FROM notes WHERE showInNotification = 1 AND isArchived = 0")
+    suspend fun getNotificationNotes(): List<Note>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(note: NoteEntity): Long
+    suspend fun insert(note: Note): Long
 
     @Update
-    suspend fun update(note: NoteEntity)
+    suspend fun update(note: Note)
 
     @Delete
-    suspend fun delete(note: NoteEntity)
+    suspend fun delete(note: Note)
 }
