@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">NoteShade</string>
+    <string name="shortcut_quick_capture_short_label">Quick Capture</string>
+    <string name="shortcut_quick_capture_long_label">Create a note fast</string>
 </resources>

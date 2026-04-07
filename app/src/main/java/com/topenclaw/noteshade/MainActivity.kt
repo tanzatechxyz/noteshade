@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
@@ -32,11 +33,12 @@ import com.topenclaw.noteshade.viewmodel.ViewModelFactories
 
 class MainActivity : ComponentActivity() {
     private var openNoteId by mutableLongStateOf(0L)
+    private var launchQuickCapture by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        openNoteId = intent.noteIdToOpen()
+        syncLaunchIntent(intent)
         val repo = NoteRepository(AppDatabase.get(this).noteDao())
         val settingsRepo = SettingsRepository(this)
         setContent {
@@ -54,7 +56,13 @@ class MainActivity : ComponentActivity() {
 
             NoteShadeTheme(settings.themeMode) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    NoteShadeAppRoot(notesVm, detailVm, settingsVm, openNoteId = openNoteId)
+                    NoteShadeAppRoot(
+                        notesVm = notesVm,
+                        detailVm = detailVm,
+                        settingsVm = settingsVm,
+                        openNoteId = openNoteId,
+                        launchQuickCapture = launchQuickCapture
+                    )
                 }
             }
         }
@@ -63,8 +71,16 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        syncLaunchIntent(intent)
+    }
+
+    private fun syncLaunchIntent(intent: Intent?) {
         openNoteId = intent.noteIdToOpen()
+        launchQuickCapture = intent.isQuickCaptureLaunch()
     }
 }
 
 private fun Intent?.noteIdToOpen(): Long = this?.getLongExtra("open_note_id", 0L) ?: 0L
+private fun Intent?.isQuickCaptureLaunch(): Boolean = this?.action == QUICK_CAPTURE_ACTION
+
+const val QUICK_CAPTURE_ACTION = "com.topenclaw.noteshade.action.QUICK_CAPTURE"

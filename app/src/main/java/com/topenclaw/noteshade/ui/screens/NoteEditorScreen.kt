@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -34,7 +36,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.topenclaw.noteshade.viewmodel.NoteEditorState
 import kotlinx.coroutines.delay
@@ -44,6 +49,7 @@ import kotlinx.coroutines.delay
 fun NoteEditorScreen(
     state: NoteEditorState,
     noteId: Long,
+    quickCapture: Boolean,
     onLoad: (Long?) -> Unit,
     onBack: () -> Unit,
     onTitleChange: (String) -> Unit,
@@ -58,6 +64,9 @@ fun NoteEditorScreen(
     val snackbar = remember { SnackbarHostState() }
     val editorNoteId = state.noteId.takeIf { it > 0 } ?: noteId
     val isNewNote = editorNoteId == 0L
+    val quickCaptureMode = quickCapture && isNewNote
+    val titleFocusRequester = remember { FocusRequester() }
+    val bodyFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(noteId) { onLoad(noteId.takeIf { it > 0 }) }
     LaunchedEffect(state.title, state.body, state.isPinned, state.showInNotification, state.autoSaveEnabled, state.hasLoaded) {
@@ -71,13 +80,24 @@ fun NoteEditorScreen(
             onClearError()
         }
     }
+    LaunchedEffect(quickCaptureMode) {
+        if (quickCaptureMode) {
+            bodyFocusRequester.requestFocus()
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text(if (isNewNote) "New note" else "Edit note")
+                        Text(
+                            when {
+                                quickCaptureMode -> "Quick Capture"
+                                isNewNote -> "New note"
+                                else -> "Edit note"
+                            }
+                        )
                         Text(
                             if (state.saved) "Saved locally" else "Saving draft automatically",
                             style = MaterialTheme.typography.labelMedium,
@@ -109,27 +129,53 @@ fun NoteEditorScreen(
             Surface(shape = MaterialTheme.shapes.large, tonalElevation = 2.dp) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Text(
-                        text = if (isNewNote) "Quick capture" else "Note details",
+                        text = if (quickCaptureMode) "Capture first, organize later" else if (isNewNote) "Quick capture" else "Note details",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    OutlinedTextField(
-                        value = state.title,
-                        onValueChange = onTitleChange,
-                        label = { Text("Title") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = state.body,
-                        onValueChange = onBodyChange,
-                        label = { Text("Body") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 160.dp, max = 240.dp),
-                        minLines = 6,
-                        maxLines = 10
-                    )
+                    if (quickCaptureMode) {
+                        OutlinedTextField(
+                            value = state.body,
+                            onValueChange = onBodyChange,
+                            label = { Text("Note") },
+                            placeholder = { Text("Jot it down…") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 200.dp, max = 280.dp)
+                                .focusRequester(bodyFocusRequester),
+                            minLines = 8,
+                            maxLines = 12,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { titleFocusRequester.requestFocus() })
+                        )
+                        OutlinedTextField(
+                            value = state.title,
+                            onValueChange = onTitleChange,
+                            label = { Text("Title (optional)") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(titleFocusRequester),
+                            singleLine = true
+                        )
+                    } else {
+                        OutlinedTextField(
+                            value = state.title,
+                            onValueChange = onTitleChange,
+                            label = { Text("Title") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = state.body,
+                            onValueChange = onBodyChange,
+                            label = { Text("Body") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 160.dp, max = 240.dp),
+                            minLines = 6,
+                            maxLines = 10
+                        )
+                    }
                 }
             }
 

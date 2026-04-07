@@ -80,16 +80,7 @@ fun NotesHomeScreen(
     Scaffold(
         topBar = {
             SmallTopAppBar(
-                title = {
-                    Column {
-                        Text("NoteShade")
-                        Text(
-                            "Fast notes with persistent shade access",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+                title = { Text("NoteShade") },
                 actions = {
                     IconButton(onClick = onOpenSettings) { Icon(Icons.Default.Settings, contentDescription = "Open settings") }
                 }

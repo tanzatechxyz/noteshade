@@ -24,7 +24,8 @@ fun NoteShadeAppRoot(
     notesVm: NotesViewModel,
     detailVm: NoteDetailViewModel,
     settingsVm: SettingsViewModel,
-    openNoteId: Long
+    openNoteId: Long,
+    launchQuickCapture: Boolean
 ) {
     val nav = rememberNavController()
     val notesState by notesVm.state.collectAsState()
@@ -37,11 +38,19 @@ fun NoteShadeAppRoot(
         }
     }
 
-    LaunchedEffect(openNoteId) {
-        if (openNoteId > 0) {
-            nav.navigate("editor/$openNoteId") {
-                launchSingleTop = true
-                restoreState = true
+    LaunchedEffect(openNoteId, launchQuickCapture) {
+        when {
+            openNoteId > 0 -> {
+                nav.navigate("editor/$openNoteId?quickCapture=false") {
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+            launchQuickCapture -> {
+                nav.navigate("editor/0?quickCapture=true") {
+                    launchSingleTop = true
+                    popUpTo("home") { inclusive = false }
+                }
             }
         }
     }
@@ -52,9 +61,9 @@ fun NoteShadeAppRoot(
                 state = notesState,
                 onQueryChange = notesVm::updateQuery,
                 onSortSelected = notesVm::updateSort,
-                onCreate = { nav.navigate("editor/0") },
+                onCreate = { nav.navigate("editor/0?quickCapture=false") },
                 onOpenSettings = { nav.navigate("settings") },
-                onOpenNote = { nav.navigate("editor/$it") },
+                onOpenNote = { nav.navigate("editor/$it?quickCapture=false") },
                 onTogglePinned = notesVm::togglePinned,
                 onToggleNotification = notesVm::toggleNotification,
                 onArchive = notesVm::archive,
@@ -63,11 +72,20 @@ fun NoteShadeAppRoot(
                 onDismissFirstRun = notesVm::dismissFirstRun
             )
         }
-        composable("editor/{noteId}", arguments = listOf(navArgument("noteId") { type = NavType.LongType })) { backStack ->
+        composable(
+            route = "editor/{noteId}?quickCapture={quickCapture}",
+            arguments = listOf(
+                navArgument("noteId") { type = NavType.LongType },
+                navArgument("quickCapture") { type = NavType.BoolType; defaultValue = false }
+            )
+        ) { backStack ->
             val noteId = backStack.arguments?.getLong("noteId") ?: 0L
+            val quickCapture = backStack.arguments?.getBoolean("quickCapture") ?: false
+            val currentRoute = backStack.destination.route ?: "home"
             NoteEditorScreen(
                 state = detailState,
                 noteId = noteId,
+                quickCapture = quickCapture,
                 onLoad = detailVm::load,
                 onBack = { nav.popBackStack() },
                 onTitleChange = detailVm::updateTitle,
@@ -77,8 +95,8 @@ fun NoteShadeAppRoot(
                 onAutoSave = {
                     detailVm.autoSave { savedId ->
                         if (noteId == 0L && savedId > 0) {
-                            nav.navigate("editor/$savedId") {
-                                popUpTo("editor/0") { inclusive = true }
+                            nav.navigate("editor/$savedId?quickCapture=false") {
+                                popUpTo(currentRoute) { inclusive = true }
                                 launchSingleTop = true
                             }
                         }
