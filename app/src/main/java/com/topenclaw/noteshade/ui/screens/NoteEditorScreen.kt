@@ -90,19 +90,15 @@ fun NoteEditorScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            when {
-                                quickCaptureMode -> "Quick Capture"
-                                isNewNote -> "New note"
-                                else -> "Edit note"
-                            }
-                        )
-                        Text(
-                            if (state.saved) "Saved locally" else "Saving draft automatically",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    if (!isNewNote) {
+                        Column {
+                            Text("Edit note")
+                            Text(
+                                if (state.saved) "Saved locally" else "Saving draft automatically",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -128,11 +124,13 @@ fun NoteEditorScreen(
         ) {
             Surface(shape = MaterialTheme.shapes.large, tonalElevation = 2.dp) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Text(
-                        text = if (quickCaptureMode) "Capture first, organize later" else if (isNewNote) "Quick capture" else "Note details",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    if (!isNewNote) {
+                        Text(
+                            text = "Note details",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                     if (quickCaptureMode) {
                         OutlinedTextField(
                             value = state.body,

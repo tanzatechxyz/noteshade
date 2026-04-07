@@ -41,19 +41,25 @@ object NotificationHelper {
         NotificationManagerCompat.from(context).cancel(noteId.toInt() + 1000)
     }
 
-    private fun buildNoteNotification(context: Context, note: Note) = NotificationCompat.Builder(context, CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_stat_note)
-        .setContentTitle(note.title.ifBlank { "Untitled note" })
-        .setContentText(note.body.ifBlank { "Tap to open" })
-        .setStyle(NotificationCompat.BigTextStyle().bigText(note.body.ifBlank { "Tap to open note" }))
-        .setOngoing(true)
-        .setOnlyAlertOnce(true)
-        .setPriority(NotificationCompat.PRIORITY_LOW)
-        .setContentIntent(openIntent(context, note.id))
-        .setDeleteIntent(broadcastIntent(context, note.id, NotificationActionReceiver.ACTION_RESTORE_NOTIFICATION))
-        .addAction(0, "Edit", openIntent(context, note.id))
-        .addAction(0, "Archive", broadcastIntent(context, note.id, NotificationActionReceiver.ACTION_ARCHIVE))
-        .build()
+    private fun buildNoteNotification(context: Context, note: Note): android.app.Notification {
+        val previewText = note.body.ifBlank {
+            note.title.ifBlank { "Tap to open" }
+        }
+
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_note)
+            .setContentTitle(context.getString(R.string.app_name))
+            .setContentText(previewText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(previewText))
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(openIntent(context, note.id))
+            .setDeleteIntent(broadcastIntent(context, note.id, NotificationActionReceiver.ACTION_RESTORE_NOTIFICATION))
+            .addAction(0, "Edit", openIntent(context, note.id))
+            .addAction(0, "Archive", broadcastIntent(context, note.id, NotificationActionReceiver.ACTION_ARCHIVE))
+            .build()
+    }
 
     private fun openIntent(context: Context, noteId: Long): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
