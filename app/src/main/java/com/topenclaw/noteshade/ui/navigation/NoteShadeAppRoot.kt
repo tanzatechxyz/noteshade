@@ -95,7 +95,7 @@ fun NoteShadeAppRoot(
                 onAutoSave = {
                     detailVm.autoSave { savedId ->
                         if (noteId == 0L && savedId > 0) {
-                            nav.navigate("editor/$savedId?quickCapture=false") {
+                            nav.navigate("editor/$savedId?quickCapture=$quickCapture") {
                                 popUpTo(currentRoute) { inclusive = true }
                                 launchSingleTop = true
                             }
@@ -104,7 +104,7 @@ fun NoteShadeAppRoot(
                 },
                 onSave = {
                     detailVm.saveAndClose {
-                        if (quickCapture && noteId == 0L) {
+                        if (quickCapture) {
                             nav.popBackStack("home", inclusive = false)
                         } else {
                             nav.popBackStack()

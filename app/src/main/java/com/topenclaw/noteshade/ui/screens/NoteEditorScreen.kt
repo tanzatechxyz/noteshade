@@ -64,7 +64,7 @@ fun NoteEditorScreen(
     val snackbar = remember { SnackbarHostState() }
     val editorNoteId = state.noteId.takeIf { it > 0 } ?: noteId
     val isNewNote = editorNoteId == 0L
-    val quickCaptureMode = quickCapture && isNewNote
+    val quickCaptureMode = quickCapture
     val bodyFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(noteId) { onLoad(noteId.takeIf { it > 0 }) }
@@ -130,7 +130,7 @@ fun NoteEditorScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                    if (isNewNote) {
+                    if (quickCaptureMode || isNewNote) {
                         OutlinedTextField(
                             value = state.body,
                             onValueChange = onBodyChange,
