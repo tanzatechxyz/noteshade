@@ -65,7 +65,6 @@ fun NoteEditorScreen(
     val editorNoteId = state.noteId.takeIf { it > 0 } ?: noteId
     val isNewNote = editorNoteId == 0L
     val quickCaptureMode = quickCapture && isNewNote
-    val titleFocusRequester = remember { FocusRequester() }
     val bodyFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(noteId) { onLoad(noteId.takeIf { it > 0 }) }
@@ -131,11 +130,11 @@ fun NoteEditorScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                    if (quickCaptureMode) {
+                    if (isNewNote) {
                         OutlinedTextField(
                             value = state.body,
                             onValueChange = onBodyChange,
-                            label = { Text("Note") },
+                            label = { Text(if (quickCaptureMode) "Note" else "Body") },
                             placeholder = { Text("Jot it down…") },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -143,17 +142,8 @@ fun NoteEditorScreen(
                                 .focusRequester(bodyFocusRequester),
                             minLines = 8,
                             maxLines = 12,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                            keyboardActions = KeyboardActions(onNext = { titleFocusRequester.requestFocus() })
-                        )
-                        OutlinedTextField(
-                            value = state.title,
-                            onValueChange = onTitleChange,
-                            label = { Text("Title (optional)") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(titleFocusRequester),
-                            singleLine = true
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { onSave() })
                         )
                     } else {
                         OutlinedTextField(

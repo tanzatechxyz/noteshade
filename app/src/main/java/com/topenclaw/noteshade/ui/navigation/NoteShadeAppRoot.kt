@@ -104,7 +104,11 @@ fun NoteShadeAppRoot(
                 },
                 onSave = {
                     detailVm.saveAndClose {
-                        nav.popBackStack()
+                        if (quickCapture && noteId == 0L) {
+                            nav.popBackStack("home", inclusive = false)
+                        } else {
+                            nav.popBackStack()
+                        }
                     }
                 },
                 onArchive = { detailVm.archive { nav.popBackStack() } },
