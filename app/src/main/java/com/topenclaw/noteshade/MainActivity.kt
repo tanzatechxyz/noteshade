@@ -1,6 +1,7 @@
 package com.topenclaw.noteshade
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -14,6 +15,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,12 +31,14 @@ import com.topenclaw.noteshade.viewmodel.SettingsViewModel
 import com.topenclaw.noteshade.viewmodel.ViewModelFactories
 
 class MainActivity : ComponentActivity() {
+    private var openNoteId by mutableLongStateOf(0L)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        openNoteId = intent.noteIdToOpen()
         val repo = NoteRepository(AppDatabase.get(this).noteDao())
         val settingsRepo = SettingsRepository(this)
-        val openNoteId = intent?.getLongExtra("open_note_id", 0L) ?: 0L
         setContent {
             val notesVm: NotesViewModel = viewModel(factory = ViewModelFactories.notes(repo, settingsRepo, applicationContext))
             val settingsVm: SettingsViewModel = viewModel(factory = ViewModelFactories.settings(settingsRepo))
@@ -49,9 +54,17 @@ class MainActivity : ComponentActivity() {
 
             NoteShadeTheme(settings.themeMode) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    NoteShadeAppRoot(notesVm, detailVm, settingsVm, initialOpenNoteId = openNoteId)
+                    NoteShadeAppRoot(notesVm, detailVm, settingsVm, openNoteId = openNoteId)
                 }
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openNoteId = intent.noteIdToOpen()
+    }
 }
+
+private fun Intent?.noteIdToOpen(): Long = this?.getLongExtra("open_note_id", 0L) ?: 0L

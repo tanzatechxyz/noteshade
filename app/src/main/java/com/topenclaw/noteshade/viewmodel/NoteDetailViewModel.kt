@@ -21,10 +21,11 @@ data class NoteEditorState(
     val title: String = "",
     val body: String = "",
     val isPinned: Boolean = false,
-    val showInNotification: Boolean = false,
+    val showInNotification: Boolean = true,
     val isArchived: Boolean = false,
     val autoSaveEnabled: Boolean = true,
     val saved: Boolean = true,
+    val hasLoaded: Boolean = false,
     val error: String? = null
 )
 
@@ -40,7 +41,7 @@ class NoteDetailViewModel(
         val settings = settingsRepository.settings.first()
         val note = noteId?.takeIf { it > 0 }?.let { repo.getNote(it) }
         _state.value = if (note == null) {
-            NoteEditorState(autoSaveEnabled = settings.autoSaveEnabled)
+            NoteEditorState(autoSaveEnabled = settings.autoSaveEnabled, showInNotification = true, hasLoaded = true)
         } else {
             NoteEditorState(
                 noteId = note.id,
@@ -50,7 +51,8 @@ class NoteDetailViewModel(
                 showInNotification = note.showInNotification,
                 isArchived = note.isArchived,
                 autoSaveEnabled = settings.autoSaveEnabled,
-                saved = true
+                saved = true,
+                hasLoaded = true
             )
         }
     }
@@ -68,22 +70,32 @@ class NoteDetailViewModel(
     fun toggleNotification() { _state.value = _state.value.copy(showInNotification = !_state.value.showInNotification, saved = false) }
     fun archive(onDone: () -> Unit = {}) = viewModelScope.launch {
         _state.value = _state.value.copy(isArchived = true, showInNotification = false, saved = false)
-        save { onDone() }
+        persist(onDone = { onDone() })
     }
     fun clearError() { _state.value = _state.value.copy(error = null) }
 
-    fun save(onDone: (Long) -> Unit = {}) = viewModelScope.launch {
+    fun autoSave(onSaved: (Long) -> Unit = {}) = viewModelScope.launch {
+        if (!_state.value.hasLoaded || _state.value.saved) return@launch
+        persist(onDone = onSaved)
+    }
+
+    fun saveAndClose(onDone: () -> Unit = {}) = viewModelScope.launch {
+        persist(onDone = { onDone() })
+    }
+
+    private suspend fun persist(onDone: (Long) -> Unit = {}) {
         try {
+            val snapshot = _state.value
             val now = System.currentTimeMillis()
-            val previous = _state.value.noteId.takeIf { it > 0 }?.let { repo.getNote(it) }
+            val previous = snapshot.noteId.takeIf { it > 0 }?.let { repo.getNote(it) }
             val id = repo.upsert(
                 Note(
-                    id = _state.value.noteId,
-                    title = _state.value.title.trim(),
-                    body = _state.value.body,
-                    isPinned = _state.value.isPinned,
-                    showInNotification = _state.value.showInNotification,
-                    isArchived = _state.value.isArchived,
+                    id = snapshot.noteId,
+                    title = snapshot.title.trim(),
+                    body = snapshot.body,
+                    isPinned = snapshot.isPinned,
+                    showInNotification = snapshot.showInNotification,
+                    isArchived = snapshot.isArchived,
                     createdAt = previous?.createdAt ?: now,
                     updatedAt = now
                 )

@@ -1,6 +1,5 @@
 package com.topenclaw.noteshade.ui.navigation
 
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -25,7 +24,7 @@ fun NoteShadeAppRoot(
     notesVm: NotesViewModel,
     detailVm: NoteDetailViewModel,
     settingsVm: SettingsViewModel,
-    initialOpenNoteId: Long
+    openNoteId: Long
 ) {
     val nav = rememberNavController()
     val notesState by notesVm.state.collectAsState()
@@ -38,8 +37,13 @@ fun NoteShadeAppRoot(
         }
     }
 
-    LaunchedEffect(initialOpenNoteId) {
-        if (initialOpenNoteId > 0) nav.navigate("editor/$initialOpenNoteId")
+    LaunchedEffect(openNoteId) {
+        if (openNoteId > 0) {
+            nav.navigate("editor/$openNoteId") {
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
     }
 
     NavHost(navController = nav, startDestination = "home") {
@@ -70,7 +74,21 @@ fun NoteShadeAppRoot(
                 onBodyChange = detailVm::updateBody,
                 onTogglePinned = detailVm::togglePinned,
                 onToggleNotification = detailVm::toggleNotification,
-                onSave = { detailVm.save { nav.popBackStack() } },
+                onAutoSave = {
+                    detailVm.autoSave { savedId ->
+                        if (noteId == 0L && savedId > 0) {
+                            nav.navigate("editor/$savedId") {
+                                popUpTo("editor/0") { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+                },
+                onSave = {
+                    detailVm.saveAndClose {
+                        nav.popBackStack()
+                    }
+                },
                 onArchive = { detailVm.archive { nav.popBackStack() } },
                 onClearError = detailVm::clearError
             )

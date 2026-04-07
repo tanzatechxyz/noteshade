@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -14,20 +16,25 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.topenclaw.noteshade.viewmodel.NoteEditorState
 import kotlinx.coroutines.delay
@@ -43,17 +50,20 @@ fun NoteEditorScreen(
     onBodyChange: (String) -> Unit,
     onTogglePinned: () -> Unit,
     onToggleNotification: () -> Unit,
+    onAutoSave: () -> Unit,
     onSave: () -> Unit,
     onArchive: () -> Unit,
     onClearError: () -> Unit
 ) {
     val snackbar = remember { SnackbarHostState() }
+    val editorNoteId = state.noteId.takeIf { it > 0 } ?: noteId
+    val isNewNote = editorNoteId == 0L
+
     LaunchedEffect(noteId) { onLoad(noteId.takeIf { it > 0 }) }
-    LaunchedEffect(state.saved, state.title, state.body, state.autoSaveEnabled) {
-        if (!state.saved && state.autoSaveEnabled) {
-            delay(700)
-            onSave()
-        }
+    LaunchedEffect(state.title, state.body, state.isPinned, state.showInNotification, state.autoSaveEnabled, state.hasLoaded) {
+        if (!state.hasLoaded || state.saved || !state.autoSaveEnabled) return@LaunchedEffect
+        delay(1500)
+        onAutoSave()
     }
     LaunchedEffect(state.error) {
         state.error?.let {
@@ -61,40 +71,109 @@ fun NoteEditorScreen(
             onClearError()
         }
     }
+
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(if (noteId == 0L) "New note" else "Edit note") }, navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = null) }
-            }, actions = {
-                if (noteId > 0L) {
-                    IconButton(onClick = onArchive) { Icon(Icons.Default.Archive, contentDescription = null) }
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(if (isNewNote) "New note" else "Edit note")
+                        Text(
+                            if (state.saved) "Saved locally" else "Saving draft automatically",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") }
+                },
+                actions = {
+                    if (!isNewNote) {
+                        IconButton(onClick = onArchive) { Icon(Icons.Default.Archive, contentDescription = "Archive note") }
+                    }
+                    IconButton(onClick = onSave) { Icon(Icons.Default.Save, contentDescription = "Save note") }
                 }
-                IconButton(onClick = onSave) { Icon(Icons.Default.Save, contentDescription = null) }
-            })
+            )
         },
         snackbarHost = { SnackbarHost(snackbar) }
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            OutlinedTextField(value = state.title, onValueChange = onTitleChange, label = { Text("Title") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = state.body, onValueChange = onBodyChange, label = { Text("Body") }, modifier = Modifier.fillMaxWidth().weight(1f, false), minLines = 10)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Default.PushPin, contentDescription = null)
-                    Text("Pin in list")
+            Surface(shape = MaterialTheme.shapes.large, tonalElevation = 2.dp) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(
+                        text = if (isNewNote) "Quick capture" else "Note details",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    OutlinedTextField(
+                        value = state.title,
+                        onValueChange = onTitleChange,
+                        label = { Text("Title") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = state.body,
+                        onValueChange = onBodyChange,
+                        label = { Text("Body") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 160.dp, max = 240.dp),
+                        minLines = 6,
+                        maxLines = 10
+                    )
                 }
-                Switch(checked = state.isPinned, onCheckedChange = { onTogglePinned() })
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Default.Notifications, contentDescription = null)
-                    Text("Show in notification shade")
+
+            Card {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Visibility", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    SettingRow(
+                        icon = { Icon(Icons.Default.PushPin, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        title = "Pin in list",
+                        subtitle = "Keep this note near the top.",
+                        checked = state.isPinned,
+                        onCheckedChange = { onTogglePinned() }
+                    )
+                    SettingRow(
+                        icon = { Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        title = "Show in notification shade",
+                        subtitle = "Enabled by default for fast access.",
+                        checked = state.showInNotification,
+                        onCheckedChange = { onToggleNotification() }
+                    )
                 }
-                Switch(checked = state.showInNotification, onCheckedChange = { onToggleNotification() })
             }
-            Text(if (state.saved) "All changes saved" else "Unsaved changes", modifier = Modifier.padding(top = 8.dp))
         }
+    }
+}
+
+@Composable
+private fun SettingRow(
+    icon: @Composable () -> Unit,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        icon()
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
